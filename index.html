@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+
 <meta charset="utf-8">
-<title>HY Maket | AR Görüntüleyici</title>
+<title>HY Maket AR Viewer</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -12,52 +13,50 @@
 
 body{
 margin:0;
-height:100vh;
-background:#ececed;
-font-family:sans-serif;
 overflow:hidden;
+font-family:sans-serif;
+background:#ececed;
 }
 
 model-viewer{
-width:100%;
-height:100%;
-background:#f5f5f5;
+width:100vw;
+height:100vh;
 --poster-color:transparent;
+background:#f2f2f2;
 }
+
+/* AR BUTTON */
 
 #ar-button{
 
 position:absolute;
+
 bottom:40px;
 left:50%;
+
 transform:translateX(-50%);
+
+padding:18px 35px;
+
+border:none;
+
+border-radius:40px;
 
 background:#007bff;
 color:white;
-border:none;
-
-padding:18px 36px;
-border-radius:50px;
 
 font-size:16px;
 font-weight:bold;
 
-box-shadow:0 10px 20px rgba(0,0,0,0.3);
-
-display:flex;
-align-items:center;
-gap:10px;
+box-shadow:0 10px 25px rgba(0,0,0,.25);
 
 cursor:pointer;
-z-index:100;
+
+z-index:10;
 
 }
 
-#ar-button:active{
-
-transform:translateX(-50%) scale(.95);
-
-}
+/* STATUS PANEL */
 
 #status{
 
@@ -65,6 +64,7 @@ position:absolute;
 
 top:40px;
 left:50%;
+
 transform:translateX(-50%);
 
 background:rgba(0,0,0,.8);
@@ -72,27 +72,29 @@ color:white;
 
 padding:12px 20px;
 
-border-radius:12px;
+border-radius:10px;
 
 font-size:14px;
 
-z-index:100;
-
 display:none;
 
+z-index:10;
+
 }
+
+/* LOADING BAR */
 
 .progress-bar{
 
 position:absolute;
 
-width:30%;
-height:4px;
-
-left:50%;
 top:50%;
+left:50%;
 
 transform:translate(-50%,-50%);
+
+width:35%;
+height:4px;
 
 background:rgba(0,0,0,.2);
 
@@ -102,8 +104,9 @@ border-radius:20px;
 
 .update-bar{
 
-height:100%;
 width:0%;
+height:100%;
+
 background:#007bff;
 
 border-radius:20px;
@@ -117,6 +120,7 @@ display:none;
 }
 
 </style>
+
 </head>
 
 <body>
@@ -127,7 +131,7 @@ display:none;
 
 id="viewer"
 
-src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/webxr.github.io@main/model.glb?v=1"
+src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/xr@main/model.glb?v=1"
 
 ar
 ar-modes="webxr scene-viewer quick-look"
@@ -135,23 +139,23 @@ ar-modes="webxr scene-viewer quick-look"
 placement="floor"
 
 camera-controls
+
 touch-action="pan-y"
 
-shadow-intensity="1"
 environment-image="neutral"
+
+shadow-intensity="1"
 
 interaction-prompt="none"
 
-alt="3D Model">
+alt="3D model">
 
 <div class="progress-bar" slot="progress-bar">
 <div class="update-bar"></div>
 </div>
 
 <button slot="ar-button" id="ar-button">
-
 AR'da Görüntüle
-
 </button>
 
 </model-viewer>
@@ -161,21 +165,21 @@ AR'da Görüntüle
 const viewer = document.querySelector("#viewer")
 const status = document.querySelector("#status")
 
-/* MODEL YÜKLEME BAR */
+/* MODEL LOADING */
 
-viewer.addEventListener("progress",(event)=>{
+viewer.addEventListener("progress",(e)=>{
 
-const progress = event.detail.totalProgress * 100
+const progress = e.detail.totalProgress*100
 
-document.querySelector(".update-bar").style.width = progress + "%"
+document.querySelector(".update-bar").style.width = progress+"%"
 
 })
 
-/* AR BAŞLADI */
+/* AR START */
 
-viewer.addEventListener("ar-status",(event)=>{
+viewer.addEventListener("ar-status",(e)=>{
 
-if(event.detail.status==="session-started"){
+if(e.detail.status==="session-started"){
 
 status.style.display="block"
 
@@ -191,21 +195,38 @@ status.style.display="none"
 
 })
 
-/* ZEMİN TAKİP */
+/* TRACKING */
 
-viewer.addEventListener("ar-tracking",(event)=>{
+viewer.addEventListener("ar-tracking",(e)=>{
 
-const state = event.detail.status
+if(e.detail.status==="tracking"){
 
-if(state==="tracking"){
-
-status.innerText="Zemin bulundu. Dokunarak modeli yerleştirin."
+status.innerText="Zemin bulundu. Dokunarak modeli yerleştirin"
 
 }
 
 else{
 
-status.innerText="Zemin aranıyor... telefonu hareket ettirin."
+status.innerText="Zemin aranıyor..."
+
+}
+
+})
+
+/* MODEL REPOSITION */
+
+let placed=false
+
+viewer.addEventListener("click",()=>{
+
+if(!placed){
+
+placed=true
+status.innerText="Model yerleştirildi. Taşımak için tekrar dokunun"
+
+}else{
+
+viewer.dismissPoster()
 
 }
 
