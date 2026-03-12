@@ -2,13 +2,14 @@
 <html lang="tr">
 <head>
     <meta charset="utf-8">
-    <title>HY Maket AR - Profesyonel Sürüm</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HY Maket AR - Final Sürüm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #f4f4f4; }
+        :root { --primary: #007bff; }
+        body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1a1a1a; }
         
         model-viewer {
             width: 100vw;
@@ -17,42 +18,42 @@
             --poster-color: transparent;
         }
 
-        /* AR BAŞLATMA BUTONU */
+        /* AR BUTONU */
         #ar-button {
             position: absolute;
-            bottom: 50px;
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            background: #007bff;
+            background: var(--primary);
             color: white;
             border: none;
             border-radius: 50px;
-            padding: 18px 36px;
+            padding: 16px 36px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 100;
+            white-space: nowrap;
         }
 
-        /* DURUM BİLGİ PANELİ */
-        #status-panel {
+        /* BİLGİ PANELİ */
+        #status-bar {
             position: absolute;
-            top: 20px;
+            top: 25px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 30px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 50px;
             font-size: 14px;
             display: none;
-            z-index: 1000;
+            z-index: 101;
             text-align: center;
-            pointer-events: none;
+            min-width: 250px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
         /* YÜKLEME ÇUBUĞU */
@@ -61,27 +62,43 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 40%;
-            height: 6px;
+            width: 50%;
+            height: 4px;
             background: rgba(0,0,0,0.1);
             border-radius: 10px;
         }
         .update-bar {
             width: 0%;
             height: 100%;
-            background: #007bff;
+            background: var(--primary);
             border-radius: 10px;
             transition: width 0.3s;
         }
 
-        /* Varsayılan AR ikonunu gizle (Kendi butonumuzu kullanıyoruz) */
+        /* HATA MESAJI */
+        #error-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ff3b30;
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: none;
+            z-index: 1002;
+            text-align: center;
+            width: 80%;
+        }
+
         model-viewer::part(default-ar-button) { display: none; }
     </style>
 </head>
 
 <body>
 
-    <div id="status-panel">Sistem yükleniyor...</div>
+    <div id="status-bar">Hazırlanıyor...</div>
+    <div id="error-msg"></div>
 
     <model-viewer 
         id="viewer"
@@ -95,69 +112,70 @@
         environment-image="neutral"
         shadow-intensity="1.5"
         shadow-softness="0.8"
-        exposure="1.2"
-        alt="Mimari Maket Modeli">
+        exposure="1"
+        loading="eager"
+        alt="HY Mimari Model">
 
         <div class="progress-bar" slot="progress-bar">
             <div class="update-bar"></div>
         </div>
 
-        <button slot="ar-button" id="ar-button">
-            📦 AR'DA GÖRÜNTÜLE
-        </button>
+        <button slot="ar-button" id="ar-button">✨ AR DENEYİMİNİ BAŞLAT</button>
 
     </model-viewer>
 
     <script>
         const viewer = document.querySelector("#viewer");
-        const statusPanel = document.querySelector("#status-panel");
+        const statusBar = document.querySelector("#status-bar");
+        const errorMsg = document.querySelector("#error-msg");
 
-        // 1. MODEL MERKEZLEME VE PIVOT DÜZELTME (Otomatik)
+        // 1. PIVOT VE MERKEZ DÜZELTME (Kaymayı önler)
         viewer.addEventListener('load', () => {
             const center = viewer.getBoundingBoxCenter();
             const size = viewer.getDimensions();
-            
-            // Modeli tam merkeze ve tabanını (y) zemin çizgisine (0) çekiyoruz
-            // Bu işlem modelin "havada uçmasını" veya "kaymasını" engeller.
+            // Modelin tabanını 0 noktasına kitler
             viewer.cameraTarget = `${center.x}m ${center.y - (size.y / 2)}m ${center.z}m`;
-            
-            console.log("Model başarıyla hizalandı.");
+            console.log("Model merkeze ve zemine hizalandı.");
         });
 
         // 2. YÜKLEME TAKİBİ
         viewer.addEventListener("progress", (e) => {
             const progress = e.detail.totalProgress * 100;
-            const updateBar = document.querySelector(".update-bar");
-            if (updateBar) updateBar.style.width = progress + "%";
-            
+            document.querySelector(".update-bar").style.width = progress + "%";
             if(progress === 100) {
-                setTimeout(() => {
-                    if(document.querySelector(".progress-bar"))
-                        document.querySelector(".progress-bar").style.display = "none";
-                }, 500);
+                setTimeout(() => { document.querySelector(".progress-bar").style.display = "none"; }, 500);
             }
         });
 
-        // 3. AR DURUM YÖNETİMİ VE TAKİBİ
+        // 3. AR DURUM VE SİYAH EKRAN KONTROLÜ
         viewer.addEventListener("ar-status", (e) => {
             if (e.detail.status === "session-started") {
-                statusPanel.style.display = "block";
-                statusPanel.innerText = "Telefonu yavaşça hareket ettirerek zemini tarayın...";
+                statusBar.style.display = "block";
+                statusBar.innerText = "Zemini yavaşça tarayın...";
+            } else if (e.detail.status === "failed") {
+                errorMsg.style.display = "block";
+                errorMsg.innerText = "AR başlatılamadı. Lütfen Chrome kullandığınızdan ve HTTPS bağlantısından emin olun.";
             } else {
-                statusPanel.style.display = "none";
+                statusBar.style.display = "none";
             }
         });
 
-        // 4. ZEMİN ALGILAMA TAKİBİ (Stabilite Kontrolü)
+        // 4. TAKİP (Zemin Bulma) MESAJLARI
         viewer.addEventListener("ar-tracking", (e) => {
             if (e.detail.status === "tracking") {
-                statusPanel.innerText = "Zemin bulundu! Modeli yerleştirmek için ekrana dokunabilirsin.";
-                statusPanel.style.background = "rgba(40, 167, 69, 0.9)"; // Başarılıysa yeşil panel
+                statusBar.innerText = "Zemin bulundu! Modeli yerleştirin.";
+                statusBar.style.background = "rgba(40, 167, 69, 0.9)";
             } else {
-                statusPanel.innerText = "Zemin aranıyor... Lütfen ışıklı ve dokulu bir yüzey seçin.";
-                statusPanel.style.background = "rgba(0, 0, 0, 0.8)";
+                statusBar.innerText = "Zemin aranıyor... Telefonu hareket ettirin.";
+                statusBar.style.background = "rgba(0, 0, 0, 0.85)";
             }
         });
+
+        // 5. GÜVENLİK KONTROLÜ (HTTPS)
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            errorMsg.style.display = "block";
+            errorMsg.innerHTML = "<strong>Siyah Ekran Hatası:</strong> AR için HTTPS (SSL) gereklidir. Lütfen güvenli bağlantı üzerinden deneyin.";
+        }
     </script>
 
 </body>
