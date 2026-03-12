@@ -3,24 +3,38 @@
 <head>
     <meta charset="utf-8">
     <title>HY Maket AR - Dokunmatik Kontrol</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 
     <style>
         :root { --primary: #007bff; }
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #f4f4f4; }
+        
+        /* Ekranın kaymasını ve büyümesini engellemek için reset */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            background: #ffffff;
+            /* iOS'ta bounce efektini kapatır */
+            position: fixed; 
+        }
         
         model-viewer {
             width: 100vw;
-            height: 100vh;
+            /* 100dvh: Mobil tarayıcı barlarına göre dinamik olarak değişen tam boy yükseklik */
+            height: 100dvh;
             background-color: #ffffff;
+            display: block;
         }
 
-        /* AR BAŞLATMA BUTONU */
+        /* AR BAŞLATMA BUTONU - YUKARI TAŞINDI */
         #ar-button {
             position: absolute;
-            bottom: 40px;
+            bottom: 120px; /* 40px'den 120px'e çıkarıldı, böylece daha yukarıda durur */
             left: 50%;
             transform: translateX(-50%);
             background: var(--primary);
@@ -36,6 +50,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* BİLGİ PANELİ */
@@ -54,6 +70,8 @@
             text-align: center;
             backdrop-filter: blur(5px);
             white-space: nowrap;
+            width: 80%;
+            max-width: 400px;
         }
 
         /* YÜKLEME GÖSTERGESİ */
@@ -75,7 +93,6 @@
             transition: width 0.3s;
         }
 
-        /* Model Viewer varsayılan AR butonunu gizle */
         model-viewer::part(default-ar-button) { display: none; }
     </style>
 </head>
@@ -86,7 +103,7 @@
 
     <model-viewer 
         id="viewer"
-        src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/xr@main/model.glb"
+        src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/webxr.github.io@main/model.glb"
         ar
         ar-modes="webxr scene-viewer quick-look" 
         ar-placement="floor"
@@ -98,6 +115,7 @@
         environment-image="neutral"
         exposure="1"
         loading="eager"
+        bounds="tight"
         alt="HY İnteraktif Maket">
 
         <div class="progress-bar" slot="progress-bar">
@@ -114,44 +132,46 @@
         const viewer = document.querySelector("#viewer");
         const statusBar = document.querySelector("#status-bar");
 
-        // 1. MODEL YÜKLENDİĞİNDE MERKEZLE
+        // 1. MODEL YÜKLENDİĞİNDE TAM OTURT
         viewer.addEventListener('load', () => {
             const center = viewer.getBoundingBoxCenter();
             const size = viewer.getDimensions();
-            // Modelin tam ortalanması ve zemin hizası için
             viewer.cameraTarget = `${center.x}m ${center.y - (size.y / 2)}m ${center.z}m`;
         });
 
         // 2. YÜKLEME İLERLEMESİ
         viewer.addEventListener("progress", (e) => {
             const progress = e.detail.totalProgress * 100;
-            document.querySelector(".update-bar").style.width = progress + "%";
+            const updateBar = document.querySelector(".update-bar");
+            if(updateBar) updateBar.style.width = progress + "%";
+            
             if(progress === 100) {
                 setTimeout(() => { 
-                    document.querySelector(".progress-bar").style.display = "none";
+                    const bar = document.querySelector(".progress-bar");
+                    if(bar) bar.style.display = "none";
                     statusBar.style.display = "block";
                     statusBar.innerText = "Model hazır. AR'ı başlatabilirsiniz.";
                 }, 500);
             }
         });
 
-        // 3. AR DURUM VE YÖNLENDİRME MESAJLARI
+        // 3. AR DURUM MESAJLARI
         viewer.addEventListener("ar-status", (e) => {
             if (e.detail.status === "session-started") {
-                statusBar.innerText = "Zemini tarayın. İki parmağınızla büyütüp küçültebilirsiniz.";
-                statusBar.style.display = "block";
+                statusBar.innerText = "Zemini tarayın. Modelinizi yerleştirin.";
             } else if (e.detail.status === "not-presenting") {
-                statusBar.innerText = "AR'ı başlatmak için butona tıklayın.";
+                statusBar.innerText = "AR kapatıldı.";
+                setTimeout(() => { statusBar.style.display = "none"; }, 2000);
             }
         });
 
-        // 4. ZEMİN TAKİBİ BİLGİSİ
+        // 4. TAKİP DURUMU
         viewer.addEventListener("ar-tracking", (e) => {
             if (e.detail.status === "tracking") {
-                statusBar.innerText = "Zemin bulundu! Dokunup yerleştirin ve parmaklarınızla ölçeklendirin.";
+                statusBar.innerText = "Zemin bulundu! Dokun ve yerleştir.";
                 statusBar.style.background = "rgba(40, 167, 69, 0.9)";
             } else {
-                statusBar.innerText = "Zemin aranıyor... Telefonu yavaşça hareket ettirin.";
+                statusBar.innerText = "Zemin aranıyor... Cihazı yavaşça hareket ettir.";
                 statusBar.style.background = "rgba(0, 0, 0, 0.8)";
             }
         });
