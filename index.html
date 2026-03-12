@@ -1,244 +1,153 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+    <meta charset="utf-8">
+    <title>HY Maket AR - Stabil Sürüm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 
-<meta charset="utf-8">
-<title>HY Maket AR</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f0f0; }
+        
+        model-viewer {
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffffff;
+            --poster-color: transparent;
+        }
 
-<meta name="viewport" content="width=device-width,initial-scale=1">
+        /* AR BUTONU - Daha modern bir görünüm */
+        #ar-button {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,123,255,0.4);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+        #ar-button:active { background: #0056b3; }
 
-<style>
+        /* DURUM PANELİ */
+        #status-panel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            display: none;
+            pointer-events: none;
+            text-align: center;
+            white-space: nowrap;
+            z-index: 20;
+        }
 
-body{
-margin:0;
-overflow:hidden;
-font-family:sans-serif;
-background:#e9e9e9;
-}
+        /* YÜKLEME ÇUBUĞU */
+        .progress-bar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50%;
+            height: 6px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        .update-bar {
+            width: 0%;
+            height: 100%;
+            background: #007bff;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
 
-model-viewer{
-width:100vw;
-height:100vh;
-background:#f5f5f5;
---poster-color:transparent;
-}
-
-/* AR BUTTON */
-
-#ar-button{
-
-position:absolute;
-bottom:40px;
-left:50%;
-transform:translateX(-50%);
-
-background:#007bff;
-color:white;
-
-border:none;
-border-radius:50px;
-
-padding:18px 36px;
-
-font-size:16px;
-font-weight:bold;
-
-cursor:pointer;
-
-box-shadow:0 8px 20px rgba(0,0,0,.25);
-
-}
-
-/* STATUS PANEL */
-
-#status{
-
-position:absolute;
-
-top:30px;
-left:50%;
-
-transform:translateX(-50%);
-
-background:rgba(0,0,0,.85);
-color:white;
-
-padding:10px 18px;
-
-border-radius:10px;
-
-font-size:14px;
-
-display:none;
-
-}
-
-/* LOADING BAR */
-
-.progress-bar{
-
-position:absolute;
-
-top:50%;
-left:50%;
-
-transform:translate(-50%,-50%);
-
-width:30%;
-height:4px;
-
-background:rgba(0,0,0,.2);
-
-border-radius:20px;
-
-}
-
-.update-bar{
-
-width:0%;
-height:100%;
-
-background:#007bff;
-
-border-radius:20px;
-
-transition:width .3s;
-
-}
-
-model-viewer::part(default-ar-button){
-display:none;
-}
-
-</style>
-
+        /* Model-viewer içindeki varsayılan butonu gizle */
+        model-viewer::part(default-ar-button) { display: none; }
+    </style>
 </head>
 
 <body>
 
-<div id="status">AR başlatılıyor...</div>
+    <div id="status-panel">Sistem Hazırlanıyor...</div>
 
-<model-viewer
+    <model-viewer 
+        id="viewer"
+        src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/webxr.github.io@main/model.glb?v=2"
+        ar
+        ar-modes="scene-viewer webxr quick-look" 
+        ar-placement="floor"
+        ar-scale="fixed"
+        camera-controls
+        touch-action="pan-y"
+        environment-image="neutral"
+        shadow-intensity="2"
+        shadow-softness="0.5"
+        exposure="1"
+        interaction-prompt="auto"
+        alt="Mimari Maket Modeli">
 
-id="viewer"
+        <div class="progress-bar" slot="progress-bar">
+            <div class="update-bar"></div>
+        </div>
 
-src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/webxr.github.io@main/model.glb?v=1"
+        <button slot="ar-button" id="ar-button">
+            ✨ AR Modunda Başlat
+        </button>
 
-ar
-ar-modes="webxr scene-viewer quick-look"
+    </model-viewer>
 
-placement="floor"
+    <script>
+        const viewer = document.querySelector("#viewer");
+        const statusPanel = document.querySelector("#status-panel");
 
-camera-controls
-touch-action="pan-y"
+        // Yükleme Takibi
+        viewer.addEventListener("progress", (e) => {
+            const progress = e.detail.totalProgress * 100;
+            document.querySelector(".update-bar").style.width = progress + "%";
+            if(progress === 100) {
+                setTimeout(() => {
+                    document.querySelector(".progress-bar").style.display = "none";
+                }, 500);
+            }
+        });
 
-environment-image="neutral"
+        // AR Durum Yönetimi
+        viewer.addEventListener("ar-status", (e) => {
+            if (e.detail.status === "session-started") {
+                statusPanel.style.display = "block";
+                statusPanel.innerText = "Yavaşça zemini tarayın...";
+            } else if (e.detail.status === "not-presenting") {
+                statusPanel.style.display = "none";
+            }
+        });
 
-shadow-intensity="1"
-shadow-softness="1"
-
-interaction-prompt="none"
-
-scale="1 1 1"
-
-alt="Mimari Model">
-
-<div class="progress-bar" slot="progress-bar">
-<div class="update-bar"></div>
-</div>
-
-<button slot="ar-button" id="ar-button">
-AR'da Görüntüle
-</button>
-
-</model-viewer>
-
-<script>
-
-const viewer = document.querySelector("#viewer")
-const status = document.querySelector("#status")
-
-let placed = false
-
-/* LOADING */
-
-viewer.addEventListener("progress",(e)=>{
-
-const progress = e.detail.totalProgress*100
-
-document.querySelector(".update-bar").style.width = progress+"%"
-
-})
-
-/* AR SESSION */
-
-viewer.addEventListener("ar-status",(e)=>{
-
-if(e.detail.status==="session-started"){
-
-status.style.display="block"
-
-status.innerText="Telefonu hareket ettirerek zemini tarayın"
-
-}
-
-else{
-
-status.style.display="none"
-
-placed=false
-
-}
-
-})
-
-/* TRACKING */
-
-viewer.addEventListener("ar-tracking",(e)=>{
-
-if(e.detail.status==="tracking"){
-
-if(!placed){
-
-status.innerText="Zemin bulundu. Dokunarak modeli yerleştirin"
-
-}
-
-}
-
-else{
-
-status.innerText="Zemin aranıyor..."
-
-}
-
-})
-
-/* PLACE OR MOVE MODEL */
-
-viewer.addEventListener("click",()=>{
-
-if(!placed){
-
-placed=true
-
-status.innerText="Model yerleşti. Taşımak için tekrar dokunun"
-
-}
-
-else{
-
-placed=false
-
-status.innerText="Yeni konuma dokunun"
-
-}
-
-})
-
-</script>
+        // Takip Durumu (Zemin Algılama)
+        viewer.addEventListener("ar-tracking", (e) => {
+            if (e.detail.status === "tracking") {
+                statusPanel.innerText = "Zemin bulundu! Modeli yerleştirin.";
+                statusPanel.style.background = "rgba(40, 167, 69, 0.85)"; // Yeşil ton
+            } else {
+                statusPanel.innerText = "Zemin aranıyor... Telefonu hareket ettirin.";
+                statusPanel.style.background = "rgba(0, 0, 0, 0.75)";
+            }
+        });
+    </script>
 
 </body>
 </html>
