@@ -2,20 +2,51 @@
 <html lang="tr">
 <head>
     <meta charset="utf-8">
-    <title>HY Maket AR - İnteraktif Sürüm</title>
+    <title>HY Maket AR - Manuel Ölçeklendirme</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 
     <style>
         :root { --primary: #007bff; }
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #1a1a1a; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; }
         
         model-viewer {
             width: 100vw;
             height: 100vh;
             background-color: #ffffff;
             --poster-color: transparent;
+        }
+
+        /* ÖLÇEKLENDİRME PANELİ */
+        #controls {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 30px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            width: 200px;
+        }
+
+        #controls label {
+            color: white;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #scale-slider {
+            width: 100%;
+            cursor: pointer;
         }
 
         /* AR BUTONU */
@@ -36,7 +67,7 @@
             z-index: 100;
         }
 
-        /* BİLGİ PANELİ */
+        /* DURUM MESAJLARI */
         #status-bar {
             position: absolute;
             top: 25px;
@@ -51,7 +82,6 @@
             z-index: 101;
             text-align: center;
             backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.1);
         }
 
         /* YÜKLEME ÇUBUĞU */
@@ -72,21 +102,6 @@
             border-radius: 10px;
         }
 
-        #error-msg {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #ff3b30;
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            display: none;
-            z-index: 1002;
-            text-align: center;
-            width: 80%;
-        }
-
         model-viewer::part(default-ar-button) { display: none; }
     </style>
 </head>
@@ -94,27 +109,27 @@
 <body>
 
     <div id="status-bar">Hazırlanıyor...</div>
-    <div id="error-msg"></div>
 
     <model-viewer 
         id="viewer"
         src="https://cdn.jsdelivr.net/gh/hasanyvz94-dev/webxr.github.io@main/model.glb"
         ar
-        ar-modes="scene-viewer webxr quick-look" 
+        ar-modes="webxr scene-viewer quick-look" 
         ar-placement="floor"
-        
-        /* ÖNEMLİ: Ölçeklendirme ve Döndürme Ayarları */
-        ar-scale="auto" 
+        ar-scale="fixed" 
         camera-controls 
         interaction-prompt="auto"
-        
         touch-action="none"
         environment-image="neutral"
         shadow-intensity="1.5"
-        shadow-softness="0.8"
         exposure="1"
         loading="eager"
         alt="HY İnteraktif Maket">
+
+        <div id="controls">
+            <label>Model Ölçeği: <span id="scale-value">1.0</span>x</label>
+            <input id="scale-slider" type="range" min="0.05" max="3" step="0.05" value="1">
+        </div>
 
         <div class="progress-bar" slot="progress-bar">
             <div class="update-bar"></div>
@@ -126,17 +141,26 @@
 
     <script>
         const viewer = document.querySelector("#viewer");
+        const scaleSlider = document.querySelector("#scale-slider");
+        const scaleValue = document.querySelector("#scale-value");
         const statusBar = document.querySelector("#status-bar");
-        const errorMsg = document.querySelector("#error-msg");
 
-        // 1. OTOMATİK MERKEZLEME (Stabilite için kritik)
+        // 1. ÖLÇEKLENDİRME MANTIĞI
+        scaleSlider.addEventListener('input', (event) => {
+            const val = event.target.value;
+            scaleValue.innerText = val;
+            // Modeli tüm eksenlerde (X, Y, Z) aynı oranda büyütür/küçültür
+            viewer.scale = `${val} ${val} ${val}`;
+        });
+
+        // 2. OTOMATİK MERKEZLEME
         viewer.addEventListener('load', () => {
             const center = viewer.getBoundingBoxCenter();
             const size = viewer.getDimensions();
             viewer.cameraTarget = `${center.x}m ${center.y - (size.y / 2)}m ${center.z}m`;
         });
 
-        // 2. YÜKLEME TAKİBİ
+        // 3. YÜKLEME TAKİBİ
         viewer.addEventListener("progress", (e) => {
             const progress = e.detail.totalProgress * 100;
             document.querySelector(".update-bar").style.width = progress + "%";
@@ -145,20 +169,17 @@
             }
         });
 
-        // 3. AR DURUM VE HATA KONTROLÜ
+        // 4. AR DURUM TAKİBİ
         viewer.addEventListener("ar-status", (e) => {
             if (e.detail.status === "session-started") {
                 statusBar.style.display = "block";
-                statusBar.innerText = "Zemini tarayın. İki parmağınızla döndürüp büyütebilirsiniz.";
-            } else if (e.detail.status === "failed") {
-                errorMsg.style.display = "block";
-                errorMsg.innerText = "AR başlatılamadı. HTTPS ve ARCore güncelliğini kontrol edin.";
+                statusBar.innerText = "Zemini tarayın. Slider ile boyutu ayarlayın.";
             } else {
                 statusBar.style.display = "none";
             }
         });
 
-        // 4. ZEMİN TAKİBİ
+        // 5. ZEMİN TAKİBİ BİLGİSİ
         viewer.addEventListener("ar-tracking", (e) => {
             if (e.detail.status === "tracking") {
                 statusBar.innerText = "Zemin bulundu! Dokun ve yerleştir.";
@@ -168,12 +189,6 @@
                 statusBar.style.background = "rgba(0, 0, 0, 0.85)";
             }
         });
-
-        // HTTPS Denetimi
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-            errorMsg.style.display = "block";
-            errorMsg.innerHTML = "<strong>Siyah Ekran Hatası:</strong> AR için HTTPS gereklidir.";
-        }
     </script>
 
 </body>
